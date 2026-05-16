@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "docker/flask-app"
+        DOCKER_IMAGE = "mahesh199811/flask-app"
         DOCKER_TAG   = "${BUILD_NUMBER}"
         CONTAINER_NAME = "flask-app-live"
     }
@@ -62,7 +62,7 @@ pipeline {
                         docker run -d \
                           --name ${CONTAINER_NAME} \
                           --restart unless-stopped \
-                          -p 5000:5000 \
+                                                    -p 9000:9000 \
                           ${DOCKER_IMAGE}:latest
                     """
                 }
