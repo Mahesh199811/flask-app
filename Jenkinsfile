@@ -5,13 +5,8 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                sh '''
-                    rm -rf .git
-                    git init
-                    git remote add origin https://github.com/Mahesh199811/flask-app.git
-                    git fetch --depth 1 origin main
-                    git checkout -B main FETCH_HEAD
-                '''
+               echo "Cloning Repo"
+               git url: "https://github.com/Mahesh199811/flask-app.git", branch: "main"
             }
         }
 
