@@ -1,71 +1,60 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_IMAGE = "mahesh199811/flask-app"
-        DOCKER_TAG   = "${BUILD_NUMBER}"
-        CONTAINER_NAME = "flask-app-live"
-    }
-
     stages {
 
         stage('Checkout') {
             steps {
-                // Pull code from GitHub
-                git branch: 'main',
-                    url: 'https://github.com/Mahesh199811/flask-app.git'
+                sh '''
+                    rm -rf .git
+                    git init
+                    git remote add origin https://github.com/Mahesh199811/flask-app.git
+                    git fetch --depth 1 origin main
+                    git checkout -B main FETCH_HEAD
+                '''
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                }
+                sh 'docker build -t mahesh199811/flask-app:latest .'
             }
         }
 
         stage('Test') {
             steps {
-                script {
-                    // Run container and check it responds
-                    sh """
-                        docker run -d --rm -p 9000:9000 \
-                          --name flask-test-${BUILD_NUMBER} \
-                          ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        sleep 3
-                        curl -f http://localhost:9000 || exit 1
-                        docker stop flask-test-${BUILD_NUMBER}
-                    """
-                }
+                sh '''
+                    docker run -d --rm -p 9000:9000 \
+                                            --name flask-test \
+                                            mahesh199811/flask-app:latest
+                    sleep 3
+                    curl -f http://localhost:9000
+                                        docker stop flask-test
+                '''
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                script {
-                    docker.withRegistry('', 'dockerhub-creds') {
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push('latest')
-                    }
-                }
+                sh '''
+                    echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+                    docker push mahesh199811/flask-app:latest
+                '''
             }
         }
 
         stage('Deploy') {
             steps {
-                script {
-                    sh """
-                        docker stop ${CONTAINER_NAME} || true
-                        docker rm   ${CONTAINER_NAME} || true
-                        docker pull ${DOCKER_IMAGE}:latest
-                        docker run -d \
-                          --name ${CONTAINER_NAME} \
-                          --restart unless-stopped \
-                                                    -p 9000:9000 \
-                          ${DOCKER_IMAGE}:latest
-                    """
-                }
+                sh '''
+                    docker stop flask-app-live || true
+                    docker rm flask-app-live || true
+                    docker pull mahesh199811/flask-app:latest
+                    docker run -d \
+                      --name flask-app-live \
+                      --restart unless-stopped \
+                      -p 9000:9000 \
+                      mahesh199811/flask-app:latest
+                '''
             }
         }
     }
@@ -78,7 +67,6 @@ pipeline {
             echo '❌ Pipeline failed. Check logs above.'
         }
         always {
-            // Clean up dangling images to save disk
             sh 'docker image prune -f'
         }
     }
